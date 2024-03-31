@@ -12,97 +12,85 @@ def df(x, beta):
 def DE_s(y, z, s_old, x, i, beta):
     result = 0
     for p in range(4):
-        sm = y[p] - z[p]
         sm1 = 0
         for k in range(3):
             sm1 += s_old[k] * x[p][k]
-        result += sm * df(sm1, beta) * x[p][i]
+        result += (y[p] - z[p]) * df(sm1, beta) * x[p][i]
     return result
 
 
-def DE_w(i, y, s_old, x, u, z, j, w_old, beta):
+def DE_w(y, z, u, s_old, w_old, x, i, j, beta):
     result = 0
     for p in range(4):
-        sm = y[p] - z[p]
         sm1 = 0
         sm2 = 0
         for k in range(3):
             sm1 += s_old[k] * x[p][k]
             sm2 += w_old[i][k] * u[p][k]
-        result += sm * df(sm1, beta) * s_old[i] * df(sm2, beta) * u[p][j]
+        result += (y[p] - z[p]) * df(sm1, beta) * s_old[i] * df(sm2, beta) * u[p][j]
     return result
 
 
-def gradient(s, w, y, eps, c, x, z, beta, u):
-    # s_new = np.array([0.0, 0.0 , 0.0])
-    s_new = np.array(s)
-    # s_old = np.array([0.0, 0.0 , 0.0])
-    s_old = np.array([float('inf'), float('inf'), float('inf')])
-    w_old = np.array([[float('inf'), float('inf'), float('inf')], [float('inf'), float('inf'), float('inf')]])
-    w_new = np.array(w)
-
-    # wyrazenie = max(np.max(np.abs(s_new - s_old)), np.max(np.abs(w_new - w_old)))
-    while  max(np.max(np.abs(s_new - s_old)), np.max(np.abs(w_new - w_old))) > eps:
-        # wyrazenie = max(np.max(np.abs(s_new - s_old)), np.max(np.abs(w_new - w_old)))
-        s_old = s_new.copy()
-        w_old = w_new.copy()
-        for i in range(3):
-            s_new[i] = s_old[i] - c * DE_s(y, z, s_old, x, i, beta)
-            for j in range(2):
-                # w_new[j][i] = w_old[j][i] - c * DE_w(i, y, s_old, x, u, z, j, w_old, beta)
-                if i <= 1:
-                    w_new[i][j] = w_old[i][j] - c * DE_w(i, y, s_old, x, u, z, j, w_old, beta)
+def calculate_max(s_new, s_old, w_new, w_old):
+    max_s = 0.0
+    max_w = 0.0
+    for i in range(3):
+        if abs(s_new[i] - s_old[i]) > max_s:
+            max_s = abs(s_new[i] - s_old[i])
+        if i < 2:
+            for j in range(len(w_new[i])):
+                if abs(w_new[i][j] - w_old[i][j]) > max_w:
+                    max_w = abs(w_new[i][j])
+    return max([max_s, max_w])
 
 
-    # print(f's_new := {s_new}')
-    # print(f'w_new := {w_new}')
+def gradient(s_old, w_old, c, y, z, x, beta):
+    s_new = [0, 0, 0]
+    w_new = [[0, 0, 0], [0, 0, 0]]
+
+    for i in range(3):
+        s_new[i] = s_old[i] - c * DE_s(y=y, z=z, s_old=s_old, x=x, i=i, beta=beta)
+        if i < 2:
+            for j in range(3):
+                w_new[i][j] = w_old[i][j] - c * DE_w(y=y, z=z, u=u, s_old=s_old, w_old=w_old, x=x, i=i, j=j, beta=beta)
+
     return s_new, w_new
 
-def dnn(u, w, s, z, beta, c, eps):
+
+def dnn(u, w_old, s_old, z, beta, c, eps):
     y = []
     x = []
     for p in range(4):
         x_i = []
-        smy = 0
+        sum_y = 0
         for i in range(3):
             sm = 0
             for j in range(3):
                 if i <= 1:
-                    sm += w[i][j] * u[p][j]
+                    sm += w_old[i][j] * u[p][j]
             xpi = f(sm, beta)
-            smy += s[i] * xpi
+            if i == 2:
+                xpi = 1.0
             x_i.append(xpi)
+            sum_y += s_old[i] * xpi
         x.append(x_i)
-        y.append(f(smy, beta))
-    s, w = gradient(s, w, y, eps, c, x, z, beta, u)
-
-    return y, s, w
-
-def test(w, u, beta):
-    hidden_input = np.dot(u, w)
-    xi = f(hidden_input, beta)
-    print(f'jestem tutaj w test xi := {xi}')
+        y.append(f(sum_y, beta))
+    s_new, w_new = gradient(s_old=s_old, w_old=w_old, c=c, y=y, z=z, x=x, beta=beta)
+    return y, s_new, w_new, w_old, s_old
 
 
-u = np.array([(0.0, 0.0, 1.0), (1.0, 0.0, 1.0), (0.0, 1.0, 1.0), (1.0, 1.0, 1.0)])
-w1 = np.array([[0.0, 1.0, 2.0], [0.0, 1.0, 2.0]])
-s1 = np.array([0.0, 1.0, 2.0])
+u = [(0.0, 0.0, 1.0), (1.0, 0.0, 1.0), (0.0, 1.0, 1.0), (1.0, 1.0, 1.0)]
+w1 = [[0.0, 1.0, 2.0], [0.0, 1.0, 2.0]]
+s1 = [0.0, 1.0, 2.0]
 beta = [1.0, 2.0, 2.5, 3.0]
-# beta = [1.0]
-z = np.array([0.0, 1.0, 1.0, 0.0])
+z = [0.0, 1.0, 1.0, 0.0]
 c = 0.5
-eps = 0.0001
-y, s, w = [], [], []
-# for b in beta:
-#      y, s, w = dnn(u, w1, s1, z, b, c, eps)
-#      print(y)
-#      y, s, w = dnn(u, w, s, z, b, c, eps)
-#      print(y)
-#      y, s, w = dnn(u, w, s, z, b, c, eps)
-#      print(y)
+eps = 0.001
 
-for i in range(1):
-     y, s1, w1 = dnn(u, w1, s1, z, beta[0], c, eps)
-test(w=np.array([[0.0, 1.0, 2.0], [0.0, 1.0, 2.0]]),u=np.array([[0, 0], [0, 1], [1, 0], [1, 1]]),beta=beta[0])
-     # print(y)
-# print(y)
+y, s_new, w_new, w_old, s_old = dnn(u, w1, s1, z, beta[0], c, eps)
+while calculate_max(s_new, s_old, w_old, w_old) > eps:
+    y, s_new, w_new, w_old, s_old = dnn(u, w_new, s_new, z, beta[0], c, eps)
+
+print(s_new)
+print(w_new)
+print(y)
