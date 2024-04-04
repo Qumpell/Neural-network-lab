@@ -85,12 +85,12 @@ s1 = [0.0, 1.0, 2.0]
 beta = [1.0, 2.0, 2.5, 3.0]
 z = [0.0, 1.0, 1.0, 0.0]
 c = 0.5
-eps = 0.001
+eps = 0.0001
 
 y, s_new, w_new, w_old, s_old = dnn(u, w1, s1, z, beta[0], c, eps)
 while calculate_max(s_new, s_old, w_old, w_old) > eps:
     y, s_new, w_new, w_old, s_old = dnn(u, w_new, s_new, z, beta[0], c, eps)
 
-print(s_new)
-print(w_new)
-print(y)
+print(f's_new:= {s_new}')
+print(f'w_new:= {w_new}')
+print(f'y:= {y}')
